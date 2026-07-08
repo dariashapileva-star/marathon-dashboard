@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Marathon Dashboard — online</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg:#07111f; --card:#101927; --card2:#0d1624; --line:#253246;
+  --text:#eef6ff; --muted:#95a6bb; --accent:#41d6c3; --accent2:#8ab4ff; --warn:#f6c453;
+  --danger:#ff7d7d; --shadow:0 12px 24px rgba(0,0,0,.18); --hover:#121e30;
+}
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg:#f3f7fb; --card:#ffffff; --card2:#eef5fb; --line:#d8e2ee;
+  --text:#172235; --muted:#617087; --accent:#0aa79b; --accent2:#3778d6; --warn:#b57a00;
+  --danger:#c84d4d; --shadow:0 10px 22px rgba(30,45,75,.08); --hover:#f3f8ff;
+}
+*{box-sizing:border-box}
+html{min-height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+  background:var(--bg);color:var(--text);margin:0;padding:22px;line-height:1.45;
+  transition:background .2s ease,color .2s ease;
+}
+.page{max-width:1180px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom)}
+h1{font-size:28px;margin:0 0 6px;letter-spacing:-.02em}
+h2{margin:0 0 14px;font-size:20px;letter-spacing:-.01em}
+h3{margin:18px 0 8px}
+p{color:var(--muted)}
+.header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px}
+.header p{margin:0}.header-title{min-width:0}.header-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin:0 0 16px;box-shadow:var(--shadow)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{background:var(--card2);border-radius:14px;padding:14px;border:1px solid var(--line);min-width:0}.kpi .num{font-size:28px;font-weight:800;color:var(--text);white-space:nowrap}.kpi .label{color:var(--muted);font-size:13px}
+.progress{height:14px;background:var(--card2);border-radius:999px;overflow:hidden;margin-top:8px;border:1px solid var(--line)}.bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0%;transition:width .25s ease}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);text-align:left;font-weight:700;white-space:nowrap}tbody tr:hover{background:var(--hover)}
+.badge{display:inline-block;padding:3px 8px;border-radius:999px;background:var(--card2);color:var(--accent2);font-size:12px;border:1px solid var(--line)}.note{color:var(--muted);font-size:13px}.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:8px 0 14px}
+select,button{background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:10px;font-size:14px}button{cursor:pointer;background:var(--card2)}button:hover{border-color:var(--accent2)}.theme-btn{white-space:nowrap}.section-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.table-wrap{overflow:auto;-webkit-overflow-scrolling:touch}.highlight{color:var(--accent);font-weight:800}.warn{color:var(--warn)}.danger{color:var(--danger)}.footer{color:var(--muted);font-size:12px;margin-top:24px}.loading{border-left:4px solid var(--accent)}.error{border-left:4px solid var(--danger)}
+.status-line{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:13px}.status-dot{width:9px;height:9px;border-radius:999px;background:var(--warn);display:inline-block}.status-dot.ok{background:var(--accent)}.status-dot.err{background:var(--danger)}
+@media (max-width: 600px){
+  body{padding:12px 10px 18px}.page{max-width:100%}.header{display:block}.header-actions{justify-content:flex-start;margin-top:12px}h1{font-size:24px}h2{font-size:18px}.card{border-radius:16px;padding:14px;margin-bottom:12px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.kpi{padding:12px}.kpi .num{font-size:22px}.kpi .label{font-size:12px}.controls{grid-template-columns:1fr}select,button{width:100%;font-size:16px}table{font-size:13px;min-width:720px}#workoutsTable{min-width:980px}.split-table{min-width:720px}.compare-table{min-width:820px}.note{font-size:12.5px}
+}
+@media (max-width: 390px){.grid{grid-template-columns:1fr}.kpi .num{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="header-title">
+      <h1>🏃‍♀️ Marathon Dashboard</h1>
+      <p id="subtitle">Подготовка к марафону 27.09.2026 · загрузка данных из Google Sheets…</p>
+      <div class="status-line"><span id="statusDot" class="status-dot"></span><span id="statusText">Подключаюсь к Google Sheets</span></div>
+    </div>
+    <div class="header-actions">
+      <button class="theme-btn" id="themeToggle" type="button">🌙 Тёмная тема</button>
+      <button type="button" onclick="loadDashboardData()">Обновить данные</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="grid">
+      <div class="kpi"><div class="num" id="daysLeft">—</div><div class="label">дней до марафона</div></div>
+      <div class="kpi"><div class="num" id="totalKm">—</div><div class="label">внесено в журнал</div></div>
+      <div class="kpi"><div class="num" id="workoutCount">—</div><div class="label">тренировок и забегов</div></div>
+      <div class="kpi"><div class="num" id="maxLongRun">—</div><div class="label">макс. long run</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>План / факт текущей недели</h2>
+    <div class="grid">
+      <div class="kpi"><div class="num" id="currentFactKm">—</div><div class="label" id="currentWeekLabel">факт текущей недели</div></div>
+      <div class="kpi"><div class="num" id="currentPlanKm">—</div><div class="label">план недели</div></div>
+      <div class="kpi"><div class="num" id="currentProgressPct">—</div><div class="label">прогресс к плану</div></div>
+    </div>
+    <div class="progress"><div class="bar" id="currentProgressBar"></div></div>
+    <p class="note" id="currentWeekNote">Данные загрузятся из Google Sheets.</p>
+  </div>
+
+  <div class="card">
+    <h2>Недельный обзор</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Неделя</th><th>Тренировок</th><th>Объём</th><th>Long run / старт</th><th>Комментарий</th></tr></thead>
+        <tbody id="weeklyBody"><tr><td colspan="5">Загрузка…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Все тренировки и забеги</h2>
+    <div class="table-wrap">
+      <table id="workoutsTable">
+        <thead><tr>
+          <th>Дата</th><th>Тип</th><th>Км</th><th>Время</th><th>Темп</th><th>Пульс</th><th>Каденс</th><th>Высота</th><th>Мощность</th><th>Усилие</th><th>Погода</th><th>Комментарий</th>
+        </tr></thead>
+        <tbody id="workoutsBody"><tr><td colspan="12">Загрузка…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">
+      <h2>Сплиты: просмотр и сравнение</h2><span class="badge">1 дата или 2 даты</span>
+    </div>
+    <div class="controls">
+      <select id="dateA"></select>
+      <select id="dateB"><option value="">— не сравнивать —</option></select>
+      <button onclick="renderSplits()">Показать</button>
+    </div>
+    <div id="splitOutput" class="table-wrap"></div>
+  </div>
+
+  <div class="card">
+    <h2>Заметки по качеству данных</h2>
+    <div id="qualityNotes"><p class="note">Заметки загрузятся из Google Sheets.</p></div>
+  </div>
+
+  <div class="footer">Сайт читает данные из Google Sheets через Apps Script. Если добавила тренировку или обновила план — нажми “Обновить данные”.</div>
+</div>
+
+<script>
+const API_BASE_URL = "https://script.google.com/macros/s/AKfycbzDwcdBmYY5amKi0ocFJs-WeEwfnBMJgO1KDSOqdjsY38TMyOKkmg2-0DwfZhbWCNhK/exec";
+const MARATHON_DATE = "2026-09-27";
+let dashboardData = { workouts: [], splits: [], plan: [], weekly_summary: [], splits_by_workout_id: {} };
+let workouts = [];
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+function toNum(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(String(value).replace(",", ".").replace(/[кмВтм]/g, "").trim());
+  return Number.isFinite(n) ? n : null;
+}
+function parseDateLocal(dateString) {
+  const [y,m,d] = String(dateString).slice(0,10).split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+function todayString() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function addDays(dateString, days) {
+  const d = parseDateLocal(dateString); d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function mondayOf(dateString) {
+  const d = parseDateLocal(dateString);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function labelFromDate(dateString) {
+  const d = parseDateLocal(dateString);
+  return `${String(d.getDate()).padStart(2,"0")}.${String(d.getMonth()+1).padStart(2,"0")}`;
+}
+function weekLabel(start, end) { return `${labelFromDate(start)}–${labelFromDate(end)}`; }
+function formatKm(value) {
+  const n = toNum(value);
+  return n === null ? "—" : `${n.toFixed(2)} км`;
+}
+function formatInt(value, suffix = "") {
+  const n = toNum(value);
+  return n === null ? "—" : `${Math.round(n)}${suffix}`;
+}
+function formatDuration(value) {
+  if (!value) return "—";
+  let s = String(value);
+  if (s.includes("T")) s = s.split("T")[1].slice(0,8);
+  if (s.startsWith("00:")) return s.slice(3);
+  if (s.startsWith("0")) return s.slice(1);
+  return s;
+}
+function paceFromSec(sec) {
+  const n = toNum(sec); if (!n) return null;
+  const m = Math.floor(n / 60); const s = Math.round(n % 60);
+  return `${m}:${String(s).padStart(2,"0")}/км`;
+}
+function formatPace(workoutOrSummary) {
+  return workoutOrSummary.avg_pace || paceFromSec(workoutOrSummary.avg_pace_sec) || "—";
+}
+function pct(value) {
+  const n = toNum(value); return n === null ? "—" : `${Math.round(n)}%`;
+}
+function daysLeft() {
+  const target = parseDateLocal(MARATHON_DATE);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff = Math.ceil((target - today)/(1000*60*60*24));
+  document.getElementById("daysLeft").textContent = diff >= 0 ? diff : "0";
+}
+function setStatus(type, text) {
+  const dot = document.getElementById("statusDot");
+  dot.className = "status-dot" + (type === "ok" ? " ok" : type === "err" ? " err" : "");
+  document.getElementById("statusText").textContent = text;
+}
+function currentWeekRange() {
+  const start = mondayOf(todayString());
+  return { start, end: addDays(start, 6) };
+}
+function isRunningPlanItem(item) {
+  const km = toNum(item.planned_km);
+  return km !== null && km > 0;
+}
+function normalizeWorkout(row) {
+  const id = row.workout_id || row.id || row.date;
+  const splitRows = dashboardData.splits_by_workout_id?.[id] || dashboardData.splits?.filter(s => s.workout_id === id) || [];
+  return {
+    id,
+    date: row.date,
+    label: row.label || labelFromDate(row.date),
+    type: row.workout_type || row.type || "—",
+    distance: toNum(row.distance_km ?? row.distance),
+    time: formatDuration(row.duration || row.time),
+    pace: row.avg_pace || row.pace || paceFromSec(row.avg_pace_sec) || "—",
+    hr: toNum(row.avg_hr_bpm ?? row.hr),
+    cadence: toNum(row.avg_cadence_spm ?? row.cadence),
+    elevation: toNum(row.elevation_m ?? row.elevation),
+    power: toNum(row.avg_power_w ?? row.power),
+    effort: toNum(row.effort_10 ?? row.effort),
+    weather: row.weather || "—",
+    comment: row.comment || "—",
+    data_quality_note: row.data_quality_note || null,
+    splits: splitRows
+      .slice()
+      .sort((a,b) => (toNum(a.split_order) || 0) - (toNum(b.split_order) || 0))
+      .map(s => [s.km_label || s.split_order, s.pace_raw || paceFromSec(s.pace_sec) || "—", s.hr_bpm ?? "—", s.power_w ?? "—", s.cadence_spm ?? "—"])
+  };
+}
+function prepareData() {
+  workouts = (dashboardData.workouts || [])
+    .filter(w => w.date)
+    .map(normalizeWorkout)
+    .sort((a,b) => String(a.date).localeCompare(String(b.date)));
+}
+function renderHeader() {
+  const updated = dashboardData.updated_at || dashboardData.generated_at || new Date().toLocaleString("ru-RU");
+  document.getElementById("subtitle").textContent = `Подготовка к марафону 27.09.2026 · данные из Google Sheets · обновлено: ${updated}`;
+}
+function renderKpis() {
+  daysLeft();
+  const totalKm = workouts.reduce((sum,w) => sum + (w.distance || 0), 0);
+  const maxLong = workouts.reduce((max,w) => Math.max(max, w.distance || 0), 0);
+  document.getElementById("totalKm").textContent = `${totalKm.toFixed(2)} км`;
+  document.getElementById("workoutCount").textContent = workouts.length;
+  document.getElementById("maxLongRun").textContent = `${maxLong.toFixed(2)} км`;
+}
+function renderCurrentWeek() {
+  const { start, end } = currentWeekRange();
+  const weeklyRows = dashboardData.weekly_summary || [];
+  const row = weeklyRows.find(w => w.week_start === start) || {};
+  const planRows = (dashboardData.plan || []).filter(p => p.date >= start && p.date <= end);
+  const workoutRows = workouts.filter(w => w.date >= start && w.date <= end);
+  const actualKm = toNum(row.actual_km) ?? workoutRows.reduce((s,w) => s + (w.distance || 0), 0);
+  const plannedKm = toNum(row.planned_km) ?? planRows.reduce((s,p) => s + (toNum(p.planned_km) || 0), 0);
+  const progress = plannedKm > 0 ? Math.round(actualKm / plannedKm * 100) : null;
+  document.getElementById("currentWeekLabel").textContent = `факт ${weekLabel(start,end)}`;
+  document.getElementById("currentFactKm").textContent = `${actualKm.toFixed(2)} км`;
+  document.getElementById("currentPlanKm").textContent = plannedKm > 0 ? `${plannedKm.toFixed(2)} км` : "—";
+  document.getElementById("currentProgressPct").textContent = progress === null ? "—" : `${progress}%`;
+  document.getElementById("currentProgressBar").style.width = `${Math.min(progress || 0, 100)}%`;
+  const keyPlan = planRows
+    .filter(p => isRunningPlanItem(p) || String(p.workout_type || "").toLowerCase().includes("long"))
+    .map(p => `${labelFromDate(p.date)}: ${p.workout_type || "тренировка"}${toNum(p.planned_km) ? ` ${toNum(p.planned_km).toFixed(1)} км` : ""}`)
+    .join("; ");
+  document.getElementById("currentWeekNote").textContent = plannedKm > 0
+    ? `Текущая неделя в процессе. Факт ${actualKm.toFixed(2)} км из ${plannedKm.toFixed(2)} км. ${keyPlan ? "Ключевые тренировки: " + keyPlan + "." : "Плановые тренировки есть в листе plan."}`
+    : `Текущая неделя в процессе. Факт ${actualKm.toFixed(2)} км. План на эту неделю пока не найден в Google Sheets.`;
+}
+function weeklyComment(w) {
+  const status = w.status || "";
+  const planned = toNum(w.planned_km);
+  const actual = toNum(w.actual_km) || 0;
+  const completion = toNum(w.completion_pct);
+  if (status === "planned") return `Плановая неделя: ${planned ? planned.toFixed(2) + " км" : "без бегового объёма"}.`;
+  if (status === "in_progress") return `Неделя в процессе: ${actual.toFixed(2)} км${planned ? ` из ${planned.toFixed(2)} км` : ""}${completion !== null ? `, ${Math.round(completion)}%` : ""}.`;
+  if (planned) return `Факт ${actual.toFixed(2)} км из плана ${planned.toFixed(2)} км${completion !== null ? `, ${Math.round(completion)}%` : ""}.`;
+  return w.comments && w.comments !== "Авторасчёт по листам workouts и plan" ? w.comments : "Авторасчёт по тренировкам.";
+}
+function renderWeeklyOverview() {
+  const rows = (dashboardData.weekly_summary || [])
+    .filter(w => w.week_start)
+    .slice()
+    .sort((a,b) => String(a.week_start).localeCompare(String(b.week_start)));
+  const tbody = document.getElementById("weeklyBody");
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="5">Пока нет данных weekly_summary.</td></tr>`; return; }
+  tbody.innerHTML = rows.map(w => {
+    const week = w.week_label || weekLabel(w.week_start, w.week_end || addDays(w.week_start, 6));
+    const workoutsCount = formatInt(w.workouts_count);
+    const actual = toNum(w.actual_km);
+    const planned = toNum(w.planned_km);
+    const volume = planned ? `${actual ? actual.toFixed(2) : "0.00"} / ${planned.toFixed(2)} км` : `${actual ? actual.toFixed(2) : "0.00"} км`;
+    const longRun = toNum(w.long_run_km) ? `${toNum(w.long_run_km).toFixed(2)} км` : "—";
+    return `<tr><td>${escapeHtml(week)}</td><td>${workoutsCount}</td><td>${volume}</td><td>${longRun}</td><td>${escapeHtml(weeklyComment(w))}</td></tr>`;
+  }).join("");
+}
+function renderWorkoutsTable() {
+  const tbody = document.getElementById("workoutsBody");
+  if (!workouts.length) { tbody.innerHTML = `<tr><td colspan="12">Пока нет тренировок.</td></tr>`; return; }
+  tbody.innerHTML = workouts.slice().reverse().map(w => `<tr>
+    <td><b>${escapeHtml(w.label)}</b></td><td>${escapeHtml(w.type)}</td><td>${w.distance ? w.distance.toFixed(2) : "—"}</td><td>${escapeHtml(w.time)}</td><td>${escapeHtml(w.pace)}</td><td>${w.hr ?? "—"}</td><td>${w.cadence ?? "—"}</td><td>${w.elevation ?? "—"} м</td><td>${w.power ?? "—"} Вт</td><td>${w.effort ? w.effort + "/10" : "—"}</td><td>${escapeHtml(w.weather)}</td><td>${escapeHtml(w.comment)}</td>
+  </tr>`).join("");
+}
+function opt(w) { return `<option value="${escapeHtml(w.date)}">${escapeHtml(w.label)} · ${escapeHtml(w.type)} · ${w.distance ? w.distance.toFixed(2) : "—"} км</option>`; }
+function initSelects() {
+  const a = document.getElementById("dateA");
+  const b = document.getElementById("dateB");
+  const options = workouts.map(opt).join("");
+  a.innerHTML = options || `<option value="">Нет тренировок</option>`;
+  b.innerHTML = `<option value="">— не сравнивать —</option>` + options;
+  if (workouts.length) a.value = workouts[workouts.length - 1].date;
+}
+function renderOne(w) {
+  if (!w) return `<p class="note">Выбери тренировку.</p>`;
+  if (!w.splits.length) return `<h3>${escapeHtml(w.label)} · ${escapeHtml(w.type)}</h3><p class="note">Для этой тренировки сплиты не найдены.</p>`;
+  const rows = w.splits.map(s => `<tr><td>${escapeHtml(s[0])}</td><td>${escapeHtml(s[1])}</td><td>${escapeHtml(s[2])}</td><td>${escapeHtml(s[3])}</td><td>${escapeHtml(s[4])}</td></tr>`).join("");
+  return `<h3>${escapeHtml(w.label)} · ${escapeHtml(w.type)}</h3>
+    <p class="note">${w.distance ? w.distance.toFixed(2) : "—"} км · ${escapeHtml(w.time)} · ${escapeHtml(w.pace)} · пульс ${w.hr ?? "—"} · ${escapeHtml(w.comment)}</p>
+    <table class="split-table"><thead><tr><th>Км</th><th>Темп</th><th>Пульс</th><th>Мощность</th><th>Каденс</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function renderCompare(a,b) {
+  const maxLen = Math.max(a?.splits?.length || 0, b?.splits?.length || 0);
+  if (!a || !b || maxLen === 0) return `<p class="note">Для сравнения нужны две тренировки со сплитами.</p>`;
+  let rows = "";
+  for (let i=0; i<maxLen; i++) {
+    const sa = a.splits[i] || ["—","—","—","—","—"];
+    const sb = b.splits[i] || ["—","—","—","—","—"];
+    rows += `<tr><td>${escapeHtml(sa[0])}</td><td>${escapeHtml(sa[1])}</td><td>${escapeHtml(sa[2])}</td><td>${escapeHtml(sa[4])}</td><td>${escapeHtml(sb[1])}</td><td>${escapeHtml(sb[2])}</td><td>${escapeHtml(sb[4])}</td></tr>`;
+  }
+  return `<h3>Сравнение: ${escapeHtml(a.label)} vs ${escapeHtml(b.label)}</h3>
+    <table class="compare-table"><thead><tr><th>Км</th><th>${escapeHtml(a.label)} темп</th><th>${escapeHtml(a.label)} HR</th><th>${escapeHtml(a.label)} кад.</th><th>${escapeHtml(b.label)} темп</th><th>${escapeHtml(b.label)} HR</th><th>${escapeHtml(b.label)} кад.</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function renderSplits() {
+  const aVal = document.getElementById("dateA").value;
+  const bVal = document.getElementById("dateB").value;
+  const a = workouts.find(w => w.date === aVal);
+  const b = workouts.find(w => w.date === bVal);
+  document.getElementById("splitOutput").innerHTML = b ? renderCompare(a,b) : renderOne(a);
+}
+function renderQualityNotes() {
+  const notes = [];
+  workouts.forEach(w => { if (w.data_quality_note) notes.push(`${w.label}: ${w.data_quality_note}`); });
+  (dashboardData.splits || []).forEach(s => { if (s.data_quality_note) notes.push(`${labelFromDate(s.date)} · ${s.km_label || s.split_order}: ${s.data_quality_note}`); });
+  const unique = [...new Set(notes)].slice(-10).reverse();
+  document.getElementById("qualityNotes").innerHTML = unique.length
+    ? unique.map(n => `<p class="note">${escapeHtml(n)}</p>`).join("")
+    : `<p class="note">Отдельных заметок по качеству данных пока нет.</p>`;
+}
+function renderAll() {
+  prepareData();
+  renderHeader(); renderKpis(); renderCurrentWeek(); renderWeeklyOverview(); renderWorkoutsTable(); initSelects(); renderSplits(); renderQualityNotes();
+}
+async function loadDashboardData() {
+  setStatus("loading", "Загружаю данные из Google Sheets…");
+  try {
+    const url = `${API_BASE_URL}?action=getDashboardData&cache_bust=${Date.now()}`;
+    const response = await fetch(url, { method: "GET", redirect: "follow" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (!data.ok) throw new Error(data.error || "Apps Script вернул ошибку");
+    dashboardData = data;
+    renderAll();
+    setStatus("ok", `Данные загружены · версия API: ${data.code_version || "—"}`);
+  } catch (err) {
+    console.error(err);
+    setStatus("err", "Не удалось загрузить данные из Google Sheets");
+    document.getElementById("subtitle").textContent = "Ошибка загрузки данных. Проверь Apps Script URL и доступ к web app.";
+    document.getElementById("weeklyBody").innerHTML = `<tr><td colspan="5">Ошибка: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+function initTheme() {
+  const saved = localStorage.getItem("marathon-dashboard-theme") || "dark";
+  document.documentElement.setAttribute("data-theme", saved);
+  updateThemeButton();
+  document.getElementById("themeToggle").addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme") || "dark";
+    const next = current === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("marathon-dashboard-theme", next);
+    updateThemeButton();
+  });
+}
+function updateThemeButton() {
+  const theme = document.documentElement.getAttribute("data-theme") || "dark";
+  document.getElementById("themeToggle").textContent = theme === "dark" ? "🌙 Тёмная тема" : "☀️ Светлая тема";
+}
+initTheme();
+daysLeft();
+loadDashboardData();
+</script>
+</body>
+</html>
