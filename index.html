@@ -39,6 +39,11 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:9px 8px;b
 .badge{display:inline-block;padding:3px 8px;border-radius:999px;background:var(--card2);color:var(--accent2);font-size:12px;border:1px solid var(--line)}.note{color:var(--muted);font-size:13px}.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:8px 0 14px}
 select,button{background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:10px;font-size:14px}button{cursor:pointer;background:var(--card2)}button:hover{border-color:var(--accent2)}.theme-btn{white-space:nowrap}.section-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.table-wrap{overflow:auto;-webkit-overflow-scrolling:touch}.highlight{color:var(--accent);font-weight:800}.warn{color:var(--warn)}.danger{color:var(--danger)}.footer{color:var(--muted);font-size:12px;margin-top:24px}.loading{border-left:4px solid var(--accent)}.error{border-left:4px solid var(--danger)}
 .status-line{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:13px}.status-dot{width:9px;height:9px;border-radius:999px;background:var(--warn);display:inline-block}.status-dot.ok{background:var(--accent)}.status-dot.err{background:var(--danger)}
+
+.chart-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0 14px}
+.chart-controls select{min-width:220px}.mode-toggle{display:flex;gap:8px;flex-wrap:wrap}.mode-btn.active{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent)}
+.chart-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:16px;background:var(--card2);padding:10px}.chart-wrap svg{display:block;width:100%;min-width:760px;height:auto}.chart-axis{stroke:var(--line);stroke-width:1}.chart-grid{stroke:var(--line);stroke-width:1;opacity:.55}.chart-text{fill:var(--muted);font-size:12px}.chart-title{fill:var(--text);font-size:13px;font-weight:700}.chart-line{fill:none;stroke:var(--accent);stroke-width:3}.chart-line-2{fill:none;stroke:var(--accent2);stroke-width:3;stroke-dasharray:6 5}.chart-dot{fill:var(--accent);stroke:var(--card2);stroke-width:2}.chart-dot-2{fill:var(--accent2);stroke:var(--card2);stroke-width:2}.chart-bar{fill:var(--accent);opacity:.86}.chart-bar-plan{fill:var(--accent2);opacity:.32}.chart-legend{display:flex;gap:14px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:13px;margin:0 0 10px}.legend-item{display:inline-flex;align-items:center;gap:6px}.legend-swatch{width:12px;height:12px;border-radius:3px;background:var(--accent);display:inline-block}.legend-swatch.plan{background:var(--accent2);opacity:.45}.legend-line{width:18px;height:3px;border-radius:999px;background:var(--accent);display:inline-block}.legend-line.plan{background:var(--accent2)}
+
 @media (max-width: 600px){
   body{padding:12px 10px 18px}.page{max-width:100%}.header{display:block}.header-actions{justify-content:flex-start;margin-top:12px}h1{font-size:24px}h2{font-size:18px}.card{border-radius:16px;padding:14px;margin-bottom:12px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.kpi{padding:12px}.kpi .num{font-size:22px}.kpi .label{font-size:12px}.controls{grid-template-columns:1fr}select,button{width:100%;font-size:16px}table{font-size:13px;min-width:720px}#workoutsTable{min-width:980px}.split-table{min-width:720px}.compare-table{min-width:820px}.note{font-size:12.5px}
 }
@@ -80,6 +85,27 @@ select,button{background:var(--card2);color:var(--text);border:1px solid var(--l
   </div>
 
   <div class="card">
+    <div class="section-title">
+      <h2>Динамика беговых показателей</h2><span class="badge">интерактивно</span>
+    </div>
+    <div class="chart-controls">
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="chartModeWeekly" type="button" onclick="setChartMode('weekly')">По неделям</button>
+        <button class="mode-btn" id="chartModeWorkout" type="button" onclick="setChartMode('workout')">По тренировкам</button>
+      </div>
+      <select id="chartMetric" onchange="renderCharts()">
+        <option value="volume">Объём бега</option>
+        <option value="hr">Средний пульс</option>
+        <option value="cadence">Каденс</option>
+        <option value="power">Мощность</option>
+      </select>
+    </div>
+    <div id="chartLegend" class="chart-legend"></div>
+    <div id="chartOutput" class="chart-wrap"><p class="note">График загрузится после получения данных.</p></div>
+    <p class="note" id="chartNote">По умолчанию лучше смотреть динамику по неделям: так меньше шума и понятнее тренд. Режим “по тренировкам” полезен для деталей и выбросов.</p>
+  </div>
+
+  <div class="card">
     <h2>Недельный обзор</h2>
     <div class="table-wrap">
       <table>
@@ -113,11 +139,6 @@ select,button{background:var(--card2);color:var(--text);border:1px solid var(--l
     <div id="splitOutput" class="table-wrap"></div>
   </div>
 
-  <div class="card">
-    <h2>Заметки по качеству данных</h2>
-    <div id="qualityNotes"><p class="note">Заметки загрузятся из Google Sheets.</p></div>
-  </div>
-
   <div class="footer">Сайт читает данные из Google Sheets через Apps Script. Если добавила тренировку или обновила план — нажми “Обновить данные”.</div>
 </div>
 
@@ -140,8 +161,28 @@ function toNum(value) {
   const n = Number(String(value).replace(",", ".").replace(/[кмВтм]/g, "").trim());
   return Number.isFinite(n) ? n : null;
 }
+function dateKey(value) {
+  if (value === null || value === undefined || value === "") return "";
+  const s = String(value).trim();
+
+  // Поддерживает и "2026-07-17", и "2026-07-17T00:00:00".
+  const iso = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (iso) return iso[1];
+
+  // Поддерживает "17.07" и "17.07.2026".
+  const ru = s.match(/^(\d{1,2})\.(\d{1,2})(?:\.(\d{4}))?$/);
+  if (ru) {
+    const dd = ru[1].padStart(2, "0");
+    const mm = ru[2].padStart(2, "0");
+    const yyyy = ru[3] || "2026";
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  return s;
+}
 function parseDateLocal(dateString) {
-  const [y,m,d] = String(dateString).slice(0,10).split("-").map(Number);
+  const key = dateKey(dateString);
+  const [y,m,d] = key.slice(0,10).split("-").map(Number);
   return new Date(y, (m || 1) - 1, d || 1);
 }
 function todayString() {
@@ -160,8 +201,28 @@ function mondayOf(dateString) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 function labelFromDate(dateString) {
-  const d = parseDateLocal(dateString);
+  const key = dateKey(dateString);
+  if (!key) return "—";
+  const d = parseDateLocal(key);
   return `${String(d.getDate()).padStart(2,"0")}.${String(d.getMonth()+1).padStart(2,"0")}`;
+}
+function normalizeDashboardDates() {
+  (dashboardData.workouts || []).forEach(w => {
+    w.date = dateKey(w.date);
+    w.week_start = dateKey(w.week_start);
+    w.label = labelFromDate(w.date);
+  });
+  (dashboardData.plan || []).forEach(p => {
+    p.date = dateKey(p.date);
+    p.week_start = dateKey(p.week_start);
+  });
+  (dashboardData.weekly_summary || []).forEach(w => {
+    w.week_start = dateKey(w.week_start);
+    w.week_end = dateKey(w.week_end);
+  });
+  (dashboardData.splits || []).forEach(s => {
+    s.date = dateKey(s.date);
+  });
 }
 function weekLabel(start, end) { return `${labelFromDate(start)}–${labelFromDate(end)}`; }
 function formatKm(value) {
@@ -211,12 +272,13 @@ function isRunningPlanItem(item) {
   return km !== null && km > 0;
 }
 function normalizeWorkout(row) {
-  const id = row.workout_id || row.id || row.date;
+  const cleanDate = dateKey(row.date);
+  const id = row.workout_id || row.id || cleanDate;
   const splitRows = dashboardData.splits_by_workout_id?.[id] || dashboardData.splits?.filter(s => s.workout_id === id) || [];
   return {
     id,
-    date: row.date,
-    label: row.label || labelFromDate(row.date),
+    date: cleanDate,
+    label: labelFromDate(cleanDate || row.label),
     type: row.workout_type || row.type || "—",
     distance: toNum(row.distance_km ?? row.distance),
     time: formatDuration(row.duration || row.time),
@@ -338,6 +400,125 @@ function renderCompare(a,b) {
   return `<h3>Сравнение: ${escapeHtml(a.label)} vs ${escapeHtml(b.label)}</h3>
     <table class="compare-table"><thead><tr><th>Км</th><th>${escapeHtml(a.label)} темп</th><th>${escapeHtml(a.label)} HR</th><th>${escapeHtml(a.label)} кад.</th><th>${escapeHtml(b.label)} темп</th><th>${escapeHtml(b.label)} HR</th><th>${escapeHtml(b.label)} кад.</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
+
+let chartMode = "weekly";
+function setChartMode(mode) {
+  chartMode = mode;
+  document.getElementById("chartModeWeekly").classList.toggle("active", mode === "weekly");
+  document.getElementById("chartModeWorkout").classList.toggle("active", mode === "workout");
+  renderCharts();
+}
+function metricConfig(metric) {
+  return {
+    volume: { label:"Объём бега", unit:"км", value:w=>w.distance, weekValue:w=>toNum(w.actual_km), planValue:w=>toNum(w.planned_km), note:"Объём лучше смотреть по неделям: важен плавный рост без резких скачков, а также recovery-недели." },
+    hr: { label:"Средний пульс", unit:"уд/мин", value:w=>w.hr, weekValue:w=>toNum(w.avg_hr_bpm), note:"Пульс лучше смотреть вместе с темпом и погодой: прогресс — когда тот же темп даётся на меньшем пульсе." },
+    cadence: { label:"Каденс", unit:"ш/мин", value:w=>w.cadence, weekValue:w=>toNum(w.avg_cadence_spm), note:"Каденс обычно меняется постепенно. Смотри на стабильность, а не на разовые пики." },
+    power: { label:"Мощность", unit:"Вт", value:w=>w.power, weekValue:w=>toNum(w.avg_power_w), note:"Мощность полезно сравнивать с темпом и пульсом: рост мощности при контролируемом пульсе может быть признаком улучшения формы." }
+  }[metric];
+}
+function weeklyRowsForChart() {
+  const rows = (dashboardData.weekly_summary || [])
+    .filter(w => w.week_start)
+    .slice()
+    .sort((a,b) => String(a.week_start).localeCompare(String(b.week_start)));
+  if (rows.length) return rows;
+  const map = new Map();
+  workouts.forEach(w => {
+    const ws = mondayOf(w.date);
+    if (!map.has(ws)) map.set(ws, { week_start:ws, week_end:addDays(ws,6), actual_km:0, workouts_count:0, duration:0, hrSum:0, hrWeight:0, cadenceSum:0, cadenceWeight:0, powerSum:0, powerWeight:0 });
+    const r = map.get(ws); const km = w.distance || 0; const sec = durationToSec(w.time) || 1;
+    r.actual_km += km; r.workouts_count += 1; r.duration += sec;
+    if (w.hr) { r.hrSum += w.hr * sec; r.hrWeight += sec; }
+    if (w.cadence) { r.cadenceSum += w.cadence * sec; r.cadenceWeight += sec; }
+    if (w.power) { r.powerSum += w.power * sec; r.powerWeight += sec; }
+  });
+  return [...map.values()].sort((a,b)=>a.week_start.localeCompare(b.week_start)).map(r => ({
+    week_start:r.week_start, week_end:r.week_end, actual_km:r.actual_km,
+    avg_hr_bpm:r.hrWeight ? Math.round(r.hrSum/r.hrWeight) : null,
+    avg_cadence_spm:r.cadenceWeight ? Math.round(r.cadenceSum/r.cadenceWeight) : null,
+    avg_power_w:r.powerWeight ? Math.round(r.powerSum/r.powerWeight) : null
+  }));
+}
+function durationToSec(value) {
+  if (!value) return null; const p = String(value).split(":").map(Number);
+  if (p.length === 2) return p[0]*60+p[1]; if (p.length === 3) return p[0]*3600+p[1]*60+p[2]; return null;
+}
+function buildChartData(metric, mode) {
+  const cfg = metricConfig(metric);
+  if (mode === "workout") {
+    return workouts.map(w => ({ label:w.label, sort:w.date, value:cfg.value(w), title:`${w.label} · ${w.type} · ${cfg.label}: ${cfg.value(w) ?? "—"} ${cfg.unit}` }))
+      .filter(d => d.value !== null && d.value !== undefined && Number.isFinite(Number(d.value)));
+  }
+  return weeklyRowsForChart().map(w => {
+    const val = cfg.weekValue(w);
+    const plan = metric === "volume" ? cfg.planValue(w) : null;
+    const label = w.week_label || weekLabel(w.week_start, w.week_end || addDays(w.week_start, 6));
+    return { label, sort:w.week_start, value:val, plan, title:`${label} · ${cfg.label}: ${val ?? "—"} ${cfg.unit}${plan ? ` · план ${plan} км` : ""}` };
+  }).filter(d => d.value !== null && d.value !== undefined && Number.isFinite(Number(d.value)));
+}
+function niceRange(values) {
+  const nums = values.filter(v => Number.isFinite(Number(v))).map(Number);
+  if (!nums.length) return {min:0,max:1};
+  let min = Math.min(...nums), max = Math.max(...nums);
+  if (min === max) { min = Math.max(0, min - 1); max = max + 1; }
+  const pad = (max-min)*0.12;
+  return { min: Math.max(0, min-pad), max:max+pad };
+}
+function renderCharts() {
+  const metric = document.getElementById("chartMetric")?.value || "volume";
+  const cfg = metricConfig(metric);
+  const data = buildChartData(metric, chartMode);
+  const out = document.getElementById("chartOutput");
+  const legend = document.getElementById("chartLegend");
+  const note = document.getElementById("chartNote");
+  if (!out || !legend) return;
+  note.textContent = cfg.note + (chartMode === "weekly" ? " Сейчас включён недельный режим." : " Сейчас включён режим отдельных тренировок.");
+  if (!data.length) { out.innerHTML = `<p class="note">Недостаточно данных для графика.</p>`; legend.innerHTML = ""; return; }
+  legend.innerHTML = metric === "volume" && chartMode === "weekly"
+    ? `<span class="legend-item"><span class="legend-swatch"></span>Факт</span><span class="legend-item"><span class="legend-swatch plan"></span>План</span>`
+    : `<span class="legend-item"><span class="legend-line"></span>${escapeHtml(cfg.label)}</span>`;
+
+  const W=900,H=320, L=54, R=24, T=28, B=62;
+  const plotW=W-L-R, plotH=H-T-B;
+  const allVals = data.flatMap(d => metric === "volume" && chartMode === "weekly" ? [d.value, d.plan].filter(v=>v!==null) : [d.value]);
+  const {min,max}=niceRange(allVals);
+  const x = i => data.length === 1 ? L + plotW/2 : L + (plotW * i/(data.length-1));
+  const y = v => T + plotH - ((Number(v)-min)/(max-min))*plotH;
+  const yTicks = [0,.25,.5,.75,1].map(t => min+(max-min)*t);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${escapeHtml(cfg.label)}">
+    <line class="chart-axis" x1="${L}" y1="${T+plotH}" x2="${W-R}" y2="${T+plotH}"/>
+    <line class="chart-axis" x1="${L}" y1="${T}" x2="${L}" y2="${T+plotH}"/>`;
+  yTicks.forEach(v => { const yy=y(v); svg += `<line class="chart-grid" x1="${L}" y1="${yy}" x2="${W-R}" y2="${yy}"/><text class="chart-text" x="8" y="${yy+4}">${formatChartValue(v, metric)}</text>`; });
+
+  if (metric === "volume" && chartMode === "weekly") {
+    const step = plotW / Math.max(data.length, 1); const barW = Math.min(34, step*0.32);
+    data.forEach((d,i) => {
+      const cx=x(i); const actualY=y(d.value); const base=T+plotH;
+      if (d.plan) { const py=y(d.plan); svg += `<rect class="chart-bar-plan" x="${cx-barW}" y="${py}" width="${barW*2}" height="${base-py}"><title>${escapeHtml(d.label)} · план: ${d.plan.toFixed ? d.plan.toFixed(1) : d.plan} км</title></rect>`; }
+      svg += `<rect class="chart-bar" x="${cx-barW/2}" y="${actualY}" width="${barW}" height="${base-actualY}"><title>${escapeHtml(d.title)}</title></rect>`;
+    });
+  } else {
+    const points = data.map((d,i)=>`${x(i)},${y(d.value)}`).join(" ");
+    svg += `<polyline class="chart-line" points="${points}"/>`;
+    data.forEach((d,i) => svg += `<circle class="chart-dot" cx="${x(i)}" cy="${y(d.value)}" r="5"><title>${escapeHtml(d.title)}</title></circle>`);
+  }
+  data.forEach((d,i) => {
+    const show = data.length <= 14 || i % Math.ceil(data.length/10) === 0 || i === data.length-1;
+    if (!show) return;
+    const tx=x(i), label=escapeHtml(shortLabel(d.label));
+    svg += `<text class="chart-text" transform="translate(${tx},${H-18}) rotate(-35)" text-anchor="end">${label}</text>`;
+  });
+  svg += `<text class="chart-title" x="${L}" y="18">${escapeHtml(cfg.label)} · ${chartMode === "weekly" ? "по неделям" : "по тренировкам"}</text></svg>`;
+  out.innerHTML = svg;
+}
+function shortLabel(label) {
+  const s=String(label || "");
+  return s.length > 16 ? s.slice(0,15)+"…" : s;
+}
+function formatChartValue(v, metric) {
+  if (metric === "volume") return Number(v).toFixed(0);
+  return String(Math.round(Number(v)));
+}
 function renderSplits() {
   const aVal = document.getElementById("dateA").value;
   const bVal = document.getElementById("dateB").value;
@@ -345,18 +526,9 @@ function renderSplits() {
   const b = workouts.find(w => w.date === bVal);
   document.getElementById("splitOutput").innerHTML = b ? renderCompare(a,b) : renderOne(a);
 }
-function renderQualityNotes() {
-  const notes = [];
-  workouts.forEach(w => { if (w.data_quality_note) notes.push(`${w.label}: ${w.data_quality_note}`); });
-  (dashboardData.splits || []).forEach(s => { if (s.data_quality_note) notes.push(`${labelFromDate(s.date)} · ${s.km_label || s.split_order}: ${s.data_quality_note}`); });
-  const unique = [...new Set(notes)].slice(-10).reverse();
-  document.getElementById("qualityNotes").innerHTML = unique.length
-    ? unique.map(n => `<p class="note">${escapeHtml(n)}</p>`).join("")
-    : `<p class="note">Отдельных заметок по качеству данных пока нет.</p>`;
-}
 function renderAll() {
   prepareData();
-  renderHeader(); renderKpis(); renderCurrentWeek(); renderWeeklyOverview(); renderWorkoutsTable(); initSelects(); renderSplits(); renderQualityNotes();
+  renderHeader(); renderKpis(); renderCurrentWeek(); renderCharts(); renderWeeklyOverview(); renderWorkoutsTable(); initSelects(); renderSplits();
 }
 async function loadDashboardData() {
   setStatus("loading", "Загружаю данные из Google Sheets…");
@@ -367,6 +539,7 @@ async function loadDashboardData() {
     const data = await response.json();
     if (!data.ok) throw new Error(data.error || "Apps Script вернул ошибку");
     dashboardData = data;
+    normalizeDashboardDates();
     renderAll();
     setStatus("ok", `Данные загружены · версия API: ${data.code_version || "—"}`);
   } catch (err) {
