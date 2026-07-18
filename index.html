@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Marathon Dashboard — online</title>
+<title>Marathon Dashboard — online v4</title>
 <style>
 :root {
   color-scheme: dark;
@@ -42,7 +42,7 @@ select,button{background:var(--card2);color:var(--text);border:1px solid var(--l
 
 .chart-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0 14px}
 .chart-controls select{min-width:220px}.mode-toggle{display:flex;gap:8px;flex-wrap:wrap}.mode-btn.active{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent)}
-.chart-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:16px;background:var(--card2);padding:10px}.chart-wrap svg{display:block;width:100%;min-width:760px;height:auto}.chart-axis{stroke:var(--line);stroke-width:1}.chart-grid{stroke:var(--line);stroke-width:1;opacity:.55}.chart-text{fill:var(--muted);font-size:12px}.chart-title{fill:var(--text);font-size:13px;font-weight:700}.chart-line{fill:none;stroke:var(--accent);stroke-width:3}.chart-line-2{fill:none;stroke:var(--accent2);stroke-width:3;stroke-dasharray:6 5}.chart-dot{fill:var(--accent);stroke:var(--card2);stroke-width:2}.chart-dot-2{fill:var(--accent2);stroke:var(--card2);stroke-width:2}.chart-bar{fill:var(--accent);opacity:.86}.chart-bar-plan{fill:var(--accent2);opacity:.32}.chart-legend{display:flex;gap:14px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:13px;margin:0 0 10px}.legend-item{display:inline-flex;align-items:center;gap:6px}.legend-swatch{width:12px;height:12px;border-radius:3px;background:var(--accent);display:inline-block}.legend-swatch.plan{background:var(--accent2);opacity:.45}.legend-line{width:18px;height:3px;border-radius:999px;background:var(--accent);display:inline-block}.legend-line.plan{background:var(--accent2)}
+.chart-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:16px;background:var(--card2);padding:10px 10px 18px}.chart-wrap svg{display:block;width:100%;min-width:760px;height:auto;overflow:visible}.chart-axis{stroke:var(--line);stroke-width:1}.chart-grid{stroke:var(--line);stroke-width:1;opacity:.55}.chart-text{fill:var(--muted);font-size:12px}.chart-title{fill:var(--text);font-size:13px;font-weight:700}.chart-line{fill:none;stroke:var(--accent);stroke-width:3}.chart-line-2{fill:none;stroke:var(--accent2);stroke-width:3;stroke-dasharray:6 5}.chart-dot{fill:var(--accent);stroke:var(--card2);stroke-width:2}.chart-dot-2{fill:var(--accent2);stroke:var(--card2);stroke-width:2}.chart-bar{fill:var(--accent);opacity:.86}.chart-bar-plan{fill:var(--accent2);opacity:.32}.chart-legend{display:flex;gap:14px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:13px;margin:0 0 10px}.legend-item{display:inline-flex;align-items:center;gap:6px}.legend-swatch{width:12px;height:12px;border-radius:3px;background:var(--accent);display:inline-block}.legend-swatch.plan{background:var(--accent2);opacity:.45}.legend-line{width:18px;height:3px;border-radius:999px;background:var(--accent);display:inline-block}.legend-line.plan{background:var(--accent2)}
 
 @media (max-width: 600px){
   body{padding:12px 10px 18px}.page{max-width:100%}.header{display:block}.header-actions{justify-content:flex-start;margin-top:12px}h1{font-size:24px}h2{font-size:18px}.card{border-radius:16px;padding:14px;margin-bottom:12px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.kpi{padding:12px}.kpi .num{font-size:22px}.kpi .label{font-size:12px}.controls{grid-template-columns:1fr}select,button{width:100%;font-size:16px}table{font-size:13px;min-width:720px}#workoutsTable{min-width:980px}.split-table{min-width:720px}.compare-table{min-width:820px}.note{font-size:12.5px}
@@ -241,6 +241,46 @@ function formatDuration(value) {
   if (s.startsWith("0")) return s.slice(1);
   return s;
 }
+function formatSplitPace(value) {
+  if (value === null || value === undefined || value === "") return null;
+  let s = String(value).trim();
+
+  // Google Sheets sometimes returns pace cells like 7:29 as a Date-like value:
+  // 1899-12-30T07:29:00. For split pace we need to display 7:29, not an ISO date.
+  const isoTime = s.match(/^\d{4}-\d{2}-\d{2}T(\d{1,2}):(\d{2})(?::\d{2})?/);
+  if (isoTime) return `${Number(isoTime[1])}:${isoTime[2]}`;
+
+  s = s.replace("/км", "").trim();
+  const hms = s.match(/^(\d{1,2}):(\d{2}):(\d{2})$/);
+  if (hms) return `${Number(hms[1])}:${hms[2]}`;
+
+  const ms = s.match(/^(\d{1,2}):(\d{2})(\*)?$/);
+  if (ms) return `${Number(ms[1])}:${ms[2]}${ms[3] || ""}`;
+
+  return s;
+}
+function paceFromSecShort(sec) {
+  const n = toNum(sec); if (!n) return null;
+  const m = Math.floor(n / 60); const s = Math.round(n % 60);
+  return `${m}:${String(s).padStart(2,"0")}`;
+}
+function formatSplitKmLabel(value, splitOrder) {
+  if (value === null || value === undefined || value === "") return String(splitOrder ?? "—");
+  const s = String(value).trim();
+
+  // Google Sheets can turn split labels like 8.01 into dates such as 2026-01-08.
+  // In split labels we convert that back to 8.01.
+  const isoDate = s.match(/^\d{4}-(\d{2})-(\d{2})(?:T.*)?$/);
+  if (isoDate) {
+    const month = Number(isoDate[1]);
+    const day = Number(isoDate[2]);
+    if (Number.isFinite(month) && Number.isFinite(day)) {
+      return `${day}.${String(month).padStart(2,"0")}`;
+    }
+  }
+
+  return s;
+}
 function paceFromSec(sec) {
   const n = toNum(sec); if (!n) return null;
   const m = Math.floor(n / 60); const s = Math.round(n % 60);
@@ -294,7 +334,13 @@ function normalizeWorkout(row) {
     splits: splitRows
       .slice()
       .sort((a,b) => (toNum(a.split_order) || 0) - (toNum(b.split_order) || 0))
-      .map(s => [s.km_label || s.split_order, s.pace_raw || paceFromSec(s.pace_sec) || "—", s.hr_bpm ?? "—", s.power_w ?? "—", s.cadence_spm ?? "—"])
+      .map(s => [
+        formatSplitKmLabel(s.km_label || s.split_order, s.split_order),
+        formatSplitPace(s.pace_raw) || paceFromSecShort(s.pace_sec) || "—",
+        s.hr_bpm ?? "—",
+        s.power_w ?? "—",
+        s.cadence_spm ?? "—"
+      ])
   };
 }
 function prepareData() {
@@ -478,7 +524,7 @@ function renderCharts() {
     ? `<span class="legend-item"><span class="legend-swatch"></span>Факт</span><span class="legend-item"><span class="legend-swatch plan"></span>План</span>`
     : `<span class="legend-item"><span class="legend-line"></span>${escapeHtml(cfg.label)}</span>`;
 
-  const W=900,H=320, L=54, R=24, T=28, B=62;
+  const W=900,H=380, L=54, R=24, T=28, B=108;
   const plotW=W-L-R, plotH=H-T-B;
   const allVals = data.flatMap(d => metric === "volume" && chartMode === "weekly" ? [d.value, d.plan].filter(v=>v!==null) : [d.value]);
   const {min,max}=niceRange(allVals);
@@ -506,7 +552,7 @@ function renderCharts() {
     const show = data.length <= 14 || i % Math.ceil(data.length/10) === 0 || i === data.length-1;
     if (!show) return;
     const tx=x(i), label=escapeHtml(shortLabel(d.label));
-    svg += `<text class="chart-text" transform="translate(${tx},${H-18}) rotate(-35)" text-anchor="end">${label}</text>`;
+    svg += `<text class="chart-text" transform="translate(${tx},${H-46}) rotate(-28)" text-anchor="end">${label}</text>`;
   });
   svg += `<text class="chart-title" x="${L}" y="18">${escapeHtml(cfg.label)} · ${chartMode === "weekly" ? "по неделям" : "по тренировкам"}</text></svg>`;
   out.innerHTML = svg;
